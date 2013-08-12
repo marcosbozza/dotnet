@@ -13,7 +13,10 @@
 //   limitations under the License.
 
 using System;
+using System.Configuration;
+using System.IO;
 using System.Xml;
+using Uol.PagSeguro.Configuration;
 using Uol.PagSeguro.Domain;
 using Uol.PagSeguro.XmlParse;
 using System.Reflection;
@@ -27,63 +30,47 @@ namespace Uol.PagSeguro.Resources
     public static class PagSeguroConfiguration
     {
 
-        private const string urlXmlConfiguration = ".../.../Configuration/PagSeguroConfig.xml";
+        private static string _urlXmlConfiguration = ".../.../Configuration/PagSeguroConfig.xml";
 
-        private static string _moduleVersion;
-        private static string _cmsVersion;
+        /// <summary>
+        /// Xml Configuration File Path
+        /// </summary>
+        public static string XmlConfigurationPath
+        {
+            get { return _urlXmlConfiguration; }
+            set { _urlXmlConfiguration = value; }
+        }
 
         /// <summary>
         /// 
         /// </summary>
         public static AccountCredentials Credentials
         {
-            get
+            get { return new AccountCredentials(_configurationSection.Credentials.Email, _configurationSection.Credentials.Token); }
+            set
             {
-                return PagSeguroConfigSerializer.GetAccountCredentials(LoadXmlConfig());
+                if (null == value) return;
+                _configurationSection.Credentials.Email = value.Email;
+                _configurationSection.Credentials.Token = value.Token;
             }
         }
 
         /// <summary>
         /// 
         /// </summary>
-        public static string ModuleVersion
-        {
-            get
-            {
-                return _moduleVersion;
-            }
-
-            set
-            {
-                _moduleVersion = value;
-            }
-        }
+        public static string ModuleVersion { get; set; }
 
         /// <summary>
         /// 
         /// </summary>
-        public static string CmsVersion
-        {
-            get
-            {
-                return _cmsVersion;
-            }
-
-            set
-            {
-                _cmsVersion = value;
-            }
-        }
+        public static string CmsVersion { get; set; }
 
         /// <summary>
         /// 
         /// </summary>
         public static string LanguageEngineDescription
         {
-            get
-            {
-                return Environment.Version.ToString();
-            }
+            get { return Environment.Version.ToString(); }
         }
 
         /// <summary>
@@ -91,10 +78,8 @@ namespace Uol.PagSeguro.Resources
         /// </summary>
         public static Uri NotificationUri
         {
-            get
-            {
-                return new Uri(GetUrlValue(PagSeguroConfigSerializer.Notification));
-            }
+            get { return new Uri(ConfigurationSection.Urls.Notification); }
+            set { ConfigurationSection.Urls.Notification = value.ToString(); }
         }
 
         /// <summary>
@@ -102,10 +87,8 @@ namespace Uol.PagSeguro.Resources
         /// </summary>
         public static Uri PaymentUri
         {
-            get
-            {
-                return new Uri(GetUrlValue(PagSeguroConfigSerializer.Payment));
-            }
+            get { return new Uri(ConfigurationSection.Urls.Payment); }
+            set { ConfigurationSection.Urls.Payment = value.ToString(); }
         }
 
         /// <summary>
@@ -113,10 +96,8 @@ namespace Uol.PagSeguro.Resources
         /// </summary>
         public static Uri PaymentRedirectUri
         {
-            get
-            {
-                return new Uri(GetUrlValue(PagSeguroConfigSerializer.PaymentRedirect));
-            }
+            get { return new Uri(ConfigurationSection.Urls.PaymentRedirect); }
+            set { ConfigurationSection.Urls.PaymentRedirect = value.ToString(); }
         }
 
         /// <summary>
@@ -124,10 +105,8 @@ namespace Uol.PagSeguro.Resources
         /// </summary>
         public static Uri SearchUri
         {
-            get
-            {
-                return new Uri(GetUrlValue(PagSeguroConfigSerializer.Search));
-            }
+            get { return new Uri(ConfigurationSection.Urls.Search); }
+            set { ConfigurationSection.Urls.Search = value.ToString(); }
         }
 
         /// <summary>
@@ -135,10 +114,8 @@ namespace Uol.PagSeguro.Resources
         /// </summary>
         public static int RequestTimeout
         {
-            get 
-            {
-                return Convert.ToInt32(GetDataConfiguration(PagSeguroConfigSerializer.RequestTimeout));
-            }
+            get { return ConfigurationSection.RequestTimeout; }
+            set { ConfigurationSection.RequestTimeout = value; }
         }
 
         /// <summary>
@@ -146,10 +123,8 @@ namespace Uol.PagSeguro.Resources
         /// </summary>
         public static string FormUrlEncoded
         {
-            get
-            {
-                return GetDataConfiguration(PagSeguroConfigSerializer.FormUrlEncoded);
-            }
+            get { return ConfigurationSection.FormUrlEncoded; }
+            set { ConfigurationSection.FormUrlEncoded = value; }
         }
 
         /// <summary>
@@ -157,10 +132,8 @@ namespace Uol.PagSeguro.Resources
         /// </summary>
         public static string Encoding
         {
-            get
-            {
-                return GetDataConfiguration(PagSeguroConfigSerializer.Encoding);
-            }
+            get { return ConfigurationSection.Encoding; }
+            set { ConfigurationSection.Encoding = value; }
         }
 
         /// <summary>
@@ -168,30 +141,8 @@ namespace Uol.PagSeguro.Resources
         /// </summary>
         public static string LibVersion
         {
-            get
-            {
-                return GetDataConfiguration(PagSeguroConfigSerializer.LibVersion);
-            }
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="url"></param>
-        /// <returns></returns>
-        private static string GetUrlValue(string url)
-        {
-            return PagSeguroConfigSerializer.GetWebserviceUrl(LoadXmlConfig(), url);
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="data"></param>
-        /// <returns></returns>
-        private static string GetDataConfiguration(string data)
-        {
-            return PagSeguroConfigSerializer.GetDataConfiguration(LoadXmlConfig(), data);
+            get { return ConfigurationSection.LibVersion; }
+            set { ConfigurationSection.LibVersion = value; }
         }
 
         /// <summary>
@@ -203,9 +154,36 @@ namespace Uol.PagSeguro.Resources
             XmlDocument xml = new XmlDocument();
             using (xml as IDisposable)
             {
-                xml.Load(urlXmlConfiguration);
+                xml.Load(XmlConfigurationPath);
             }
             return xml;
+        }
+
+        private static PagSeguroConfigurationSection _configurationSection;
+        private static PagSeguroConfigurationSection ConfigurationSection
+        {
+            get
+            {
+                if (null != _configurationSection)
+                {
+                    return _configurationSection;
+                }
+
+                _configurationSection = ConfigurationManager.GetSection("pagSeguro") as PagSeguroConfigurationSection;
+                if (null != _configurationSection)
+                {
+                    return _configurationSection;
+                }
+
+                if (File.Exists(XmlConfigurationPath))
+                {
+                    _configurationSection = new PagSeguroConfigurationSection(LoadXmlConfig());
+                    return _configurationSection;
+                }
+
+                _configurationSection = new PagSeguroConfigurationSection();
+                return _configurationSection;
+            }
         }
     }
 }
